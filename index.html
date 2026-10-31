@@ -1,1 +1,1415 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Guerreiras do K-Pop: Huntrix Dress Up 3D</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', 'Comic Sans MS', 'Rounded Mplus 1c', sans-serif;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: #1a0b2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Container formato Mobile */
+    #app-container {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      height: 100dvh;
+      background: linear-gradient(180deg, #ffd6f5 0%, #e4c1f9 60%);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 35px rgba(255, 0, 160, 0.5);
+    }
+
+    /* Cenários dinâmicos atrás do Canvas 3D */
+    .bg-stage-0 { background: radial-gradient(circle at 50% 35%, #fff5d6 10%, #ffe3f1 55%, #d8b4f8 100%); }
+    .bg-stage-1 { background: linear-gradient(180deg, #b8e8fc 0%, #ddf3ff 50%, #b8e8fc 100%); background-size: 30px 30px; }
+    .bg-stage-2 { background: linear-gradient(180deg, #ffb3d9 0%, #ffd9ec 45%, #88d49e 90%); }
+    .bg-stage-3 { background: radial-gradient(circle at 50% 30%, #ff00a0 0%, #4a0e78 55%, #120428 100%); }
+    .bg-stage-4 { background: linear-gradient(180deg, #e5c6ff 0%, #f7d6ff 60%, #d4a5ff 100%); }
+    .bg-stage-5 { background: linear-gradient(180deg, #72efdd 0%, #64dfdf 50%, #5390d9 100%); }
+
+    /* Área 3D Superior */
+    #viewport-container {
+      position: relative;
+      width: 100%;
+      height: 58%;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+
+    #three-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Placa com nome da jogadora e dica 360 */
+    #top-banner {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.88);
+      border: 2px solid #ff5ca8;
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #b5179e;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    #rotate-hint {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.78);
+      color: #8338ec;
+      padding: 3px 12px;
+      border-radius: 15px;
+      font-size: 11px;
+      font-weight: bold;
+      pointer-events: none;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* Colunas de Botões Laterais (Padrão das Imagens de Referência) */
+    .side-buttons {
+      position: absolute;
+      top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 15;
+    }
+    .side-buttons.left { left: 12px; }
+    .side-buttons.right { right: 12px; }
+
+    .pink-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ff99d6 0%, #ff5ca8 100%);
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 0 #d63384, 0 5px 10px rgba(0,0,0,0.18);
+      color: white;
+      font-size: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .pink-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #d63384;
+    }
+
+    /* Paleta de Cores Lateral (Idêntica à Referência 2 e 5) */
+    #color-palette-popup {
+      position: absolute;
+      top: 165px;
+      right: 12px;
+      width: 112px;
+      background: #ff75c3;
+      border: 3px solid #ffffff;
+      border-radius: 14px;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+      z-index: 25;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    #color-palette-popup.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.85);
+    }
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 2px solid rgba(255,255,255,0.9);
+      cursor: pointer;
+      box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2);
+    }
+    .color-swatch:active {
+      transform: scale(0.9);
+    }
+
+    /* Área Inferior do Guarda-Roupa */
+    #wardrobe-panel {
+      width: 100%;
+      height: 42%;
+      background: #d8f3ff;
+      border-top: 4px solid #8ecae6;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    /* Barra de Categorias */
+    #category-bar {
+      display: flex;
+      overflow-x: auto;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #bde0fe;
+      border-bottom: 2px solid #90dbf4;
+      scrollbar-width: none;
+    }
+    #category-bar::-webkit-scrollbar { display: none; }
+
+    .cat-tab {
+      min-width: 46px;
+      height: 44px;
+      border-radius: 11px;
+      background: #e2f1ff;
+      border: 2px solid #72ddf7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 22px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .cat-tab.active {
+      background: linear-gradient(180deg, #ff99d6 0%, #ff5ca8 100%);
+      border-color: #ffffff;
+      box-shadow: 0 3px 6px rgba(255, 60, 160, 0.35);
+      transform: translateY(-2px);
+    }
+
+    /* Grade de Itens */
+    #items-grid {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      align-content: start;
+    }
+
+    .item-card {
+      aspect-ratio: 1 / 1;
+      background: #ffffff;
+      border: 3px solid #a2d2ff;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      padding: 4px;
+      position: relative;
+      box-shadow: 0 3px 5px rgba(0,0,0,0.06);
+      transition: transform 0.12s, border-color 0.12s;
+    }
+    .item-card.selected {
+      border-color: #ff3c9e;
+      background: #fff0f8;
+      box-shadow: 0 0 0 2px #ff99d6;
+    }
+    .item-card:active {
+      transform: scale(0.94);
+    }
+    .item-icon {
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+    .item-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #5a189a;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    /* Tela Inicial com a Rummi */
+    #start-screen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(89, 13, 130, 0.88) 0%, rgba(255, 42, 147, 0.85) 100%);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 20px;
+      text-align: center;
+      color: #fff;
+    }
+    #start-screen.hidden {
+      display: none;
+    }
+
+    .game-logo {
+      margin-top: 8px;
+      background: linear-gradient(90deg, #ffea00, #ff66c4, #00f5d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 28px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      filter: drop-shadow(0 3px 0 #3c096c);
+    }
+    .game-sublogo {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffe5ec;
+      margin-top: 2px;
+    }
+
+    .rummi-speech-box {
+      background: #ffffff;
+      color: #4a0e78;
+      border: 4px solid #ff5ca8;
+      border-radius: 22px;
+      padding: 14px 16px;
+      width: 100%;
+      max-width: 350px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+
+    .rummi-badge {
+      display: inline-block;
+      background: #ff2a93;
+      color: white;
+      font-weight: 900;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      margin-bottom: 6px;
+    }
+
+    .rummi-greeting {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      line-height: 1.35;
+    }
+
+    #player-name-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      border: 2px solid #b5179e;
+      font-size: 16px;
+      font-weight: bold;
+      color: #3c096c;
+      text-align: center;
+      outline: none;
+      margin-bottom: 12px;
+      background: #fdf4ff;
+    }
+
+    #start-play-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 16px;
+      border: 3px solid #fff;
+      background: linear-gradient(180deg, #ff66c4 0%, #d9048e 100%);
+      color: white;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 5px 0 #7b2cbf;
+    }
+    #start-play-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #7b2cbf;
+    }
+
+    /* Modo Foto / Show */
+    .photo-mode #wardrobe-panel,
+    .photo-mode .side-buttons.right,
+    .photo-mode #color-palette-popup {
+      display: none !important;
+    }
+    .photo-mode #viewport-container {
+      height: 100% !important;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container" class="bg-stage-0">
+  <!-- TELA INICIAL COM A RUMMI SORRIDENTE -->
+  <div id="start-screen">
+    <div>
+      <div class="game-logo">Guerreiras Huntrix</div>
+      <div class="game-sublogo">✨ K-Pop Idol Dress Up 3D ✨</div>
+    </div>
+
+    <div class="rummi-speech-box">
+      <div class="rummi-badge">🎤 RUMMI - Líder Huntrix</div>
+      <div class="rummi-greeting">
+        "Oiê! Eu sou a <b>Rummi</b>! 😄👋<br/>
+        Bem-vinda ao nosso camarim 3D das Guerreiras do K-Pop! Digite seu nome para criarmos looks incríveis!"
+      </div>
+      <input type="text" id="player-name-input" placeholder="Digite seu nome aqui..." maxlength="18" />
+      <button id="start-play-btn">COMEÇAR O SHOW! ✨</button>
+    </div>
+  </div>
+
+  <!-- VIEWPORT 3D THREE.JS -->
+  <div id="viewport-container">
+    <div id="top-banner">✨ Camarim Huntrix ✨</div>
+
+    <!-- Botões Padrão Esquerda -->
+    <div class="side-buttons left">
+      <button class="pink-btn" id="btn-home" title="Voltar à Tela Inicial">↩️</button>
+      <button class="pink-btn" id="btn-reset" title="Limpar Roupa">🗑️</button>
+      <button class="pink-btn" id="btn-random" title="Visual Aleatório">🎲</button>
+      <button class="pink-btn" id="btn-music" title="Música K-Pop">🎵</button>
+    </div>
+
+    <!-- Botões Padrão Direita -->
+    <div class="side-buttons right">
+      <button class="pink-btn" id="btn-photo" title="Modo Palco / Foto">✔️</button>
+      <button class="pink-btn" id="btn-preset" title="Trocar Guerreira Huntrix">👭</button>
+      <button class="pink-btn" id="btn-color" title="Paleta de Cores">🎨</button>
+    </div>
+
+    <!-- Paleta de Cores Lateral (18 Cores) -->
+    <div id="color-palette-popup" class="hidden"></div>
+
+    <canvas id="three-canvas"></canvas>
+    <div id="rotate-hint">🔄 Arraste a guerreira para girar em 360°</div>
+  </div>
+
+  <!-- PAINEL DE ROUPAS E OPÇÕES -->
+  <div id="wardrobe-panel">
+    <div id="category-bar"></div>
+    <div id="items-grid"></div>
+  </div>
+</div>
+
+<script>
+  /**************************************************************
+   * 1. SINTETIZADOR DE ÁUDIO K-POP (WEB AUDIO API - SEM MP3 EXTERNO)
+   **************************************************************/
+  class KpopAudioEngine {
+    constructor() {
+      this.ctx = null;
+      this.isPlaying = false;
+      this.tempo = 132;
+      this.step = 0;
+      this.timer = null;
+      this.songIndex = 0;
+      this.melodies = [
+        // Música 1: Huntrix Pop Star
+        [523.25, 659.25, 783.99, 659.25, 880.00, 783.99, 659.25, 587.33,
+         523.25, 659.25, 783.99, 1046.50, 987.77, 783.99, 659.25, 783.99],
+        // Música 2: Guerreiras Neon
+        [440.00, 523.25, 659.25, 880.00, 783.99, 659.25, 523.25, 587.33,
+         659.25, 659.25, 880.00, 783.99, 659.25, 523.25, 493.88, 440.00]
+      ];
+    }
+
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+      }
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+
+    playPopSound(freq = 600) {
+      this.init();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, this.ctx.currentTime + 0.09);
+
+      gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.1);
+    }
+
+    playSparkle() {
+      this.init();
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((n, i) => {
+        setTimeout(() => this.playPopSound(n), i * 55);
+      });
+    }
+
+    toggleMusic() {
+      this.init();
+      if (this.isPlaying) {
+        this.songIndex = (this.songIndex + 1) % (this.melodies.length + 1);
+        if (this.songIndex === this.melodies.length) {
+          this.stopMusic();
+          return false;
+        }
+      } else {
+        this.songIndex = 0;
+        this.startMusic();
+      }
+      return true;
+    }
+
+    startMusic() {
+      this.init();
+      if (this.timer) clearInterval(this.timer);
+      this.isPlaying = true;
+      const interval = (60 / this.tempo) * 500;
+      this.timer = setInterval(() => {
+        if (!this.isPlaying) return;
+        const notes = this.melodies[this.songIndex % this.melodies.length];
+        const freq = notes[this.step % notes.length];
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = (this.step % 2 === 0) ? 'square' : 'triangle';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.19);
+
+        this.step++;
+      }, interval);
+    }
+
+    stopMusic() {
+      this.isPlaying = false;
+      if (this.timer) clearInterval(this.timer);
+    }
+  }
+
+  const audio = new KpopAudioEngine();
+
+  /**************************************************************
+   * 2. DADOS DO GUARDA-ROUPA E PERSONAGENS (HUNTRIX K-POP)
+   **************************************************************/
+  const PALETTE_COLORS = [
+    '#ffffff', '#fff3b0', '#ffbe0b',
+    '#fb5607', '#2b2d42', '#8d5524',
+    '#7f1d1d', '#ff0055', '#ff5ca8',
+    '#ff99d6', '#9b5de5', '#3a0ca3',
+    '#4361ee', '#00f5d4', '#b8e8fc',
+    '#a7f3d0', '#10b981', '#9ca3af'
+  ];
+
+  const CATEGORIES = [
+    { id: 'face', icon: '😊', name: 'Rosto' },
+    { id: 'hair', icon: '💇‍♀️', name: 'Cabelos' },
+    { id: 'top', icon: '🧥', name: 'Blusas' },
+    { id: 'dress', icon: '👗', name: 'Vestidos' },
+    { id: 'bottom', icon: '🩳', name: 'Saias/Calças' },
+    { id: 'shoes', icon: '🥾', name: 'Botas' },
+    { id: 'acc', icon: '👑', name: 'Acessórios' },
+    { id: 'bg', icon: '🌸', name: 'Cenários' }
+  ];
+
+  const ITEMS_DB = {
+    face: [
+      { id: 'smile', icon: '😄', label: 'Sorriso Rummi' },
+      { id: 'wink', icon: '😉', label: 'Piscadinha Idol' },
+      { id: 'star', icon: '🤩', label: 'Olhos Estrela' },
+      { id: 'tongue', icon: '😋', label: 'Fofa Travessa' },
+      { id: 'skin_light', icon: '🏻', label: 'Pele Clara' },
+      { id: 'skin_warm', icon: '🏼', label: 'Pele Mel' },
+      { id: 'skin_tan', icon: '🏽', label: 'Pele Dourada' },
+      { id: 'skin_dark', icon: '🏾', label: 'Pele Negra' }
+    ],
+    hair: [
+      { id: 'none', icon: '🚫', label: 'Sem Cabelo' },
+      { id: 'rummi_long', icon: '💜', label: 'Longo Rummi' },
+      { id: 'high_bun', icon: '🎀', label: 'Coque Idol' },
+      { id: 'space_buns', icon: '🐼', label: 'Coques Duplos' },
+      { id: 'twin_tails', icon: 'blonde', icon: '✨', label: 'Maria-Chiquinha' },
+      { id: 'short_bob', icon: '🌸', label: 'Chanel Fofo' }
+    ],
+    top: [
+      { id: 'none', icon: '🚫', label: 'Nenhum' },
+      { id: 'kpop_jacket', icon: '🧥', label: 'Jaqueta Huntrix' },
+      { id: 'sailor_top', icon: '👚', label: 'Blusa Colegial' },
+      { id: 'cropped_star', icon: '⭐', label: 'Cropped Estrela' },
+      { id: 'hoodie_cute', icon: '🎽', label: 'Moletom Fofo' },
+      { id: 'bolero_idol', icon: '🦋', label: 'Bolero K-Pop' }
+    ],
+    dress: [
+      { id: 'none', icon: '🚫', label: 'Nenhum' },
+      { id: 'star_idol', icon: '🌟', label: 'Vestido Show' },
+      { id: 'corset_dress', icon: '👗', label: 'Vestido Laço' },
+      { id: 'academy_dress', icon: '🎓', label: 'Vestido Retrô' },
+      { id: 'mermaid_tail', icon: '🧜‍♀️', label: 'Sereia Mágica' },
+      { id: 'warrior_armor', icon: '⚔️', label: 'Armadura Neon' }
+    ],
+    bottom: [
+      { id: 'none', icon: '🚫', label: 'Nenhum' },
+      { id: 'pleated_skirt', icon: '🩰', label: 'Saia Plissada' },
+      { id: 'baggy_jeans', icon: '👖', label: 'Jeans Street' },
+      { id: 'tutu_skirt', icon: '🌺', label: 'Saia Rodada' },
+      { id: 'shorts_kpop', icon: '🩳', label: 'Shortinho Pop' }
+    ],
+    shoes: [
+      { id: 'none', icon: '🚫', label: 'Descalça' },
+      { id: 'idol_boots', icon: '👢', label: 'Bota K-Pop' },
+      { id: 'laced_boots', icon: '🥾', label: 'Coturno Guerreira' },
+      { id: 'sneakers_sock', icon: '👟', label: 'Tênis & Meião' },
+      { id: 'mary_jane', icon: '🥿', label: 'Sapatilha Boneca' }
+    ],
+    acc: [
+      { id: 'none', icon: '🚫', label: 'Sem Acessório' },
+      { id: 'head_glasses', icon: '🕶️', label: 'Óculos no Topo' },
+      { id: 'round_glasses', icon: '👓', label: 'Óculos Redondo' },
+      { id: 'ribbon_bow', icon: '🎀', label: 'Laço Gigante' },
+      { id: 'idol_crown', icon: '👑', label: 'Coroa Pop' },
+      { id: 'cat_bag', icon: '🐱', label: 'Bolsa Gatinho' },
+      { id: 'huntrix_wings', icon: '🧚‍♀️', label: 'Asas Guerreira' },
+      { id: 'kpop_mic', icon: '🎤', label: 'Lightstick / Mic' }
+    ],
+    bg: [
+      { id: 0, icon: '⭐', label: 'Estrelas Pastel' },
+      { id: 1, icon: '🔵', label: 'Poá Azul Fofo' },
+      { id: 2, icon: '🌸', label: 'Cerejeiras' },
+      { id: 3, icon: '⚡', label: 'Palco Huntrix' },
+      { id: 4, icon: '💜', label: 'Estúdio Lilás' },
+      { id: 5, icon: '🌊', label: 'Reino Sereia' }
+    ]
+  };
+
+  // Presets das Guerreiras do K-Pop Huntrix
+  const HUNTRIX_PRESETS = [
+    {
+      name: 'Rummi (Líder Huntrix)',
+      face: 'wink', skin: '#ffe0bd',
+      hair: 'high_bun', hairColor: '#9b5de5',
+      top: 'kpop_jacket', topColor: '#c77dff',
+      dress: 'none', dressColor: '#ff5ca8',
+      bottom: 'pleated_skirt', bottomColor: '#2b2d42',
+      shoes: 'sneakers_sock', shoesColor: '#2b2d42',
+      acc: 'head_glasses', accColor: '#ffbe0b',
+      bg: 4
+    },
+    {
+      name: 'Mika (Guerreira Street)',
+      face: 'tongue', skin: '#ffe0bd',
+      hair: 'space_buns', hairColor: '#2b2d42',
+      top: 'kpop_jacket', topColor: '#4361ee',
+      dress: 'none', dressColor: '#ff5ca8',
+      bottom: 'baggy_jeans', bottomColor: '#90dbf4',
+      shoes: 'sneakers_sock', shoesColor: '#ffffff',
+      acc: 'cat_bag', accColor: '#ffffff',
+      bg: 1
+    },
+    {
+      name: 'Zoe (Vocalista Estelar)',
+      face: 'smile', skin: '#ffe0bd',
+      hair: 'rummi_long', hairColor: '#ff5ca8',
+      top: 'none', topColor: '#ffbe0b',
+      dress: 'corset_dress', dressColor: '#a7f3d0',
+      bottom: 'none', bottomColor: '#ff5ca8',
+      shoes: 'mary_jane', shoesColor: '#10b981',
+      acc: 'ribbon_bow', accColor: '#ff99d6',
+      bg: 0
+    },
+    {
+      name: 'Sereia Mística K-Pop',
+      face: 'star', skin: '#f1c27d',
+      hair: 'rummi_long', hairColor: '#9b5de5',
+      top: 'none', topColor: '#b8e8fc',
+      dress: 'mermaid_tail', dressColor: '#00f5d4',
+      bottom: 'none', bottomColor: '#00f5d4',
+      shoes: 'none', shoesColor: '#ffffff',
+      acc: 'huntrix_wings', accColor: '#ff99d6',
+      bg: 5
+    }
+  ];
+
+  // Estado atual da personagem
+  let currentState = JSON.parse(JSON.stringify(HUNTRIX_PRESETS[0]));
+  let activeCategory = 'hair';
+  let presetIndex = 0;
+  let isWaving = true;
+
+  /**************************************************************
+   * 3. CENA 3D THREE.JS E CONSTRUÇÃO DA BONECA CHIBI 360°
+   **************************************************************/
+  const canvas = document.getElementById('three-canvas');
+  const viewport = document.getElementById('viewport-container');
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(36, viewport.clientWidth / viewport.clientHeight, 0.1, 100);
+  camera.position.set(0, 0.65, 6.4);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+  renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Iluminação Suave estilo Anime/Toon
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xfff0f8, 0.65);
+  dirLight.position.set(3, 5, 5);
+  scene.add(dirLight);
+
+  const backLight = new THREE.DirectionalLight(0xc77dff, 0.4);
+  backLight.position.set(-3, 3, -4);
+  scene.add(backLight);
+
+  // Grupo Principal da Personagem (Gira em 360°)
+  const characterGroup = new THREE.Group();
+  scene.add(characterGroup);
+
+  // Subgrupos para troca rápida
+  const headGroup = new THREE.Group();
+  const hairGroup = new THREE.Group();
+  const topGroup = new THREE.Group();
+  const dressGroup = new THREE.Group();
+  const bottomGroup = new THREE.Group();
+  const shoesGroup = new THREE.Group();
+  const accGroup = new THREE.Group();
+
+  let rightArmPivot, leftArmPivot, headMesh;
+
+  // Gerador de Textura de Rosto Anime em Canvas 2D
+  function createFaceTexture(expression, skinHex) {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+
+    // Fundo da pele
+    ctx.fillStyle = skinHex;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Bochechas rosadas fofas
+    ctx.fillStyle = 'rgba(255, 105, 180, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(160, 300, 32, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(352, 300, 32, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sobrancelhas
+    ctx.strokeStyle = '#3d1e4d';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(175, 210, 35, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(337, 210, 35, Math.PI * 1.2, Math.PI * 1.8);
+    ctx.stroke();
+
+    // Função auxiliar para desenhar olho grande de Anime
+    function drawAnimeEye(cx, cy, isWink, isStar) {
+      if (isWink) {
+        ctx.strokeStyle = '#240046';
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.arc(cx, cy + 5, 32, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+        return;
+      }
+
+      // Esclera branca
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 38, 42, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Íris roxa/brilhante K-Pop
+      const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, 34);
+      grad.addColorStop(0, '#5a189a');
+      grad.addColorStop(0.6, '#9d4edd');
+      grad.addColorStop(1, '#240046');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 2, 30, 34, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupila
+      ctx.fillStyle = '#10002b';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 4, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Brilho branco
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx - 12, cy - 12, 10, 0, Math.PI * 2);
+      ctx.arc(cx + 12, cy + 12, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (isStar) {
+        ctx.fillStyle = '#ffea00';
+        ctx.font = '26px sans-serif';
+        ctx.fillText('★', cx - 12, cy + 10);
+      }
+
+      // Cílios superiores
+      ctx.strokeStyle = '#10002b';
+      ctx.lineWidth = 11;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 39, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+    }
+
+    drawAnimeEye(180, 250, expression === 'wink', expression === 'star');
+    drawAnimeEye(332, 250, false, expression === 'star');
+
+    // Boca
+    ctx.strokeStyle = '#6a040f';
+    ctx.lineWidth = 7;
+    if (expression === 'tongue') {
+      ctx.beginPath();
+      ctx.arc(256, 315, 22, 0, Math.PI);
+      ctx.stroke();
+      ctx.fillStyle = '#ff4d6d';
+      ctx.beginPath();
+      ctx.arc(264, 326, 11, 0, Math.PI);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#ff4d6d';
+      ctx.beginPath();
+      ctx.arc(256, 312, 24, 0, Math.PI);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  // Constrói o Corpo Base Chibi (Manequim 3D)
+  function buildBaseBody() {
+    characterGroup.clear();
+    const skinMat = new THREE.MeshToonMaterial({ color: currentState.skin });
+
+    // Cabeça Chibi Grande
+    headGroup.clear();
+    const headGeo = new THREE.SphereGeometry(0.92, 32, 32);
+    const faceTex = createFaceTexture(currentState.face, currentState.skin);
+    const headMat = new THREE.MeshToonMaterial({ map: faceTex });
+    headMesh = new THREE.Mesh(headGeo, headMat);
+    headMesh.rotation.y = -Math.PI / 2;
+    headGroup.add(headMesh);
+
+    // Orelhas
+    const earGeo = new THREE.SphereGeometry(0.18, 16, 16);
+    const leftEar = new THREE.Mesh(earGeo, skinMat);
+    leftEar.position.set(-0.88, 0, 0);
+    const rightEar = new THREE.Mesh(earGeo, skinMat);
+    rightEar.position.set(0.88, 0, 0);
+    headGroup.add(leftEar, rightEar);
+
+    headGroup.position.set(0, 1.55, 0);
+    characterGroup.add(headGroup);
+
+    // Pescoço e Tronco Chibi
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.25, 16), skinMat);
+    neck.position.set(0, 0.65, 0);
+    characterGroup.add(neck);
+
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.85, 24), skinMat);
+    torso.position.set(0, 0.18, 0);
+    characterGroup.add(torso);
+
+    // Braços Articulados
+    leftArmPivot = new THREE.Group();
+    leftArmPivot.position.set(-0.38, 0.5, 0);
+    const armGeo = new THREE.CylinderGeometry(0.11, 0.09, 0.72, 16);
+    const leftArm = new THREE.Mesh(armGeo, skinMat);
+    leftArm.position.set(-0.12, -0.3, 0);
+    leftArm.rotation.z = -0.35;
+    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), skinMat);
+    leftHand.position.set(-0.24, -0.65, 0);
+    leftArmPivot.add(leftArm, leftHand);
+    characterGroup.add(leftArmPivot);
+
+    rightArmPivot = new THREE.Group();
+    rightArmPivot.position.set(0.38, 0.5, 0);
+    const rightArm = new THREE.Mesh(armGeo, skinMat);
+    rightArm.position.set(0.12, -0.3, 0);
+    rightArm.rotation.z = 0.35;
+    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), skinMat);
+    rightHand.position.set(0.24, -0.65, 0);
+    rightArmPivot.add(rightArm, rightHand);
+    characterGroup.add(rightArmPivot);
+
+    // Pernas (Escondidas se estiver com cauda de sereia)
+    if (currentState.dress !== 'mermaid_tail') {
+      const legGeo = new THREE.CylinderGeometry(0.15, 0.12, 0.95, 16);
+      const leftLeg = new THREE.Mesh(legGeo, skinMat);
+      leftLeg.position.set(-0.2, -0.68, 0);
+      const rightLeg = new THREE.Mesh(legGeo, skinMat);
+      rightLeg.position.set(0.2, -0.68, 0);
+      characterGroup.add(leftLeg, rightLeg);
+    }
+
+    // Plataforma / Palco Redondo sob os pés
+    const stageMat = new THREE.MeshToonMaterial({ color: 0xff75c3 });
+    const stageRingMat = new THREE.MeshToonMaterial({ color: 0xffffff });
+    const stage = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.25, 0.14, 32), stageMat);
+    stage.position.set(0, -1.22, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.04, 16, 48), stageRingMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(0, -1.15, 0);
+    characterGroup.add(stage, ring);
+
+    // Adiciona camadas de roupas
+    characterGroup.add(hairGroup, topGroup, dressGroup, bottomGroup, shoesGroup, accGroup);
+  }
+
+  // Constrói Cabelos 3D (visíveis em 360°)
+  function updateHair() {
+    hairGroup.clear();
+    if (currentState.hair === 'none') return;
+
+    const mat = new THREE.MeshToonMaterial({ color: currentState.hairColor });
+
+    // Topo e Franja base
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.96, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.58), mat);
+    cap.position.set(0, 1.58, -0.02);
+    hairGroup.add(cap);
+
+    // Franja frontal estilizada
+    const bangs = new THREE.Mesh(new THREE.SphereGeometry(0.95, 24, 16, 0, Math.PI, 0, Math.PI * 0.38), mat);
+    bangs.position.set(0, 1.62, 0.06);
+    bangs.rotation.x = 0.28;
+    hairGroup.add(bangs);
+
+    // Mechas laterais emoldurando o rosto
+    const sideGeo = new THREE.ConeGeometry(0.24, 1.1, 16);
+    const leftLock = new THREE.Mesh(sideGeo, mat);
+    leftLock.position.set(-0.82, 1.15, 0.25);
+    leftLock.rotation.z = 0.15;
+    const rightLock = new THREE.Mesh(sideGeo, mat);
+    rightLock.position.set(0.82, 1.15, 0.25);
+    rightLock.rotation.z = -0.15;
+    hairGroup.add(leftLock, rightLock);
+
+    if (currentState.hair === 'rummi_long') {
+      const backHair = new THREE.Mesh(new THREE.ConeGeometry(1.05, 2.5, 24), mat);
+      backHair.position.set(0, 0.7, -0.35);
+      backHair.rotation.x = 0.12;
+      hairGroup.add(backHair);
+    } else if (currentState.hair === 'high_bun') {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.48, 24, 24), mat);
+      bun.position.set(0, 2.58, -0.1);
+      const backTail = new THREE.Mesh(new THREE.ConeGeometry(0.65, 1.5, 20), mat);
+      backTail.position.set(0, 1.0, -0.45);
+      hairGroup.add(bun, backTail);
+    } else if (currentState.hair === 'space_buns') {
+      const bunGeo = new THREE.SphereGeometry(0.38, 20, 20);
+      const b1 = new THREE.Mesh(bunGeo, mat);
+      b1.position.set(-0.78, 2.32, -0.1);
+      const b2 = new THREE.Mesh(bunGeo, mat);
+      b2.position.set(0.78, 2.32, -0.1);
+
+      const tailGeo = new THREE.ConeGeometry(0.28, 1.1, 16);
+      const t1 = new THREE.Mesh(tailGeo, mat);
+      t1.position.set(-0.95, 1.1, -0.15);
+      t1.rotation.z = -0.25;
+      const t2 = new THREE.Mesh(tailGeo, mat);
+      t2.position.set(0.95, 1.1, -0.15);
+      t2.rotation.z = 0.25;
+      hairGroup.add(b1, b2, t1, t2);
+    } else if (currentState.hair === 'twin_tails') {
+      const tailGeo = new THREE.ConeGeometry(0.36, 2.2, 20);
+      const t1 = new THREE.Mesh(tailGeo, mat);
+      t1.position.set(-1.05, 1.05, -0.1);
+      t1.rotation.z = -0.2;
+      const t2 = new THREE.Mesh(tailGeo, mat);
+      t2.position.set(1.05, 1.05, -0.1);
+      t2.rotation.z = 0.2;
+      hairGroup.add(t1, t2);
+    } else if (currentState.hair === 'short_bob') {
+      const bob = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 1.1, 24), mat);
+      bob.position.set(0, 1.35, -0.12);
+      // Chifrinhos/Presilhas estilo Anya da referência 3
+      const hornGeo = new THREE.ConeGeometry(0.22, 0.42, 4);
+      const hornMat = new THREE.MeshToonMaterial({ color: 0x2b2d42 });
+      const h1 = new THREE.Mesh(hornGeo, hornMat);
+      h1.position.set(-0.68, 2.35, 0.15);
+      h1.rotation.z = 0.4;
+      const h2 = new THREE.Mesh(hornGeo, hornMat);
+      h2.position.set(0.68, 2.35, 0.15);
+      h2.rotation.z = -0.4;
+      hairGroup.add(bob, h1, h2);
+    }
+  }
+
+  // Constrói Roupas e Fantasias 3D
+  function updateOutfits() {
+    topGroup.clear();
+    dressGroup.clear();
+    bottomGroup.clear();
+    shoesGroup.clear();
+    accGroup.clear();
+
+    const topMat = new THREE.MeshToonMaterial({ color: currentState.topColor });
+    const whiteMat = new THREE.MeshToonMaterial({ color: 0xffffff });
+    const goldMat = new THREE.MeshToonMaterial({ color: 0xffbe0b });
+
+    // Se houver vestido completo, oculta blusa e saia avulsas para não sobrepor
+    if (currentState.dress !== 'none') {
+      const dMat = new THREE.MeshToonMaterial({ color: currentState.dressColor });
+
+      if (currentState.dress === 'mermaid_tail') {
+        const shellTop = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.35, 0.35, 20), whiteMat);
+        shellTop.position.set(0, 0.35, 0);
+        const tailBody = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.18, 1.25, 24), dMat);
+        tailBody.position.set(0, -0.48, 0);
+        const fin = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.5, 4), goldMat);
+        fin.position.set(0, -1.05, -0.15);
+        fin.rotation.x = Math.PI / 2;
+        dressGroup.add(shellTop, tailBody, fin);
+      } else {
+        const bodice = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.4, 0.65, 24), dMat);
+        bodice.position.set(0, 0.25, 0);
+        const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.88, 0.95, 28), dMat);
+        skirt.position.set(0, -0.25, 0);
+        dressGroup.add(bodice, skirt);
+
+        if (currentState.dress === 'star_idol' || currentState.dress === 'warrior_armor') {
+          const belt = new THREE.Mesh(new THREE.TorusGeometry(0.41, 0.05, 12, 32), goldMat);
+          belt.rotation.x = Math.PI / 2;
+          belt.position.set(0, -0.02, 0);
+          dressGroup.add(belt);
+        }
+      }
+    } else {
+      // TOPS / BLUSAS
+      if (currentState.top !== 'none') {
+        const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.41, 0.55, 24), topMat);
+        shirt.position.set(0, 0.28, 0);
+        topGroup.add(shirt);
+
+        if (currentState.top === 'kpop_jacket' || currentState.top === 'hoodie_cute') {
+          const innerTop = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.39, 0.52, 20), goldMat);
+          innerTop.position.set(0, 0.27, 0.02);
+          const sleeveGeo = new THREE.SphereGeometry(0.22, 16, 16);
+          const s1 = new THREE.Mesh(sleeveGeo, topMat);
+          s1.position.set(-0.48, 0.32, 0);
+          const s2 = new THREE.Mesh(sleeveGeo, topMat);
+          s2.position.set(0.48, 0.32, 0);
+          topGroup.add(innerTop, s1, s2);
+        } else if (currentState.top === 'sailor_top') {
+          const collar = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.06, 12, 24), whiteMat);
+          collar.rotation.x = Math.PI / 2;
+          collar.position.set(0, 0.52, 0);
+          const tie = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.3, 4), new THREE.MeshToonMaterial({ color: 0xff0055 }));
+          tie.position.set(0, 0.35, 0.38);
+          tie.rotation.x = Math.PI;
+          topGroup.add(collar, tie);
+        }
+      }
+
+      // BOTTOMS / SAIAS E CALÇAS
+      if (currentState.bottom !== 'none') {
+        const bMat = new THREE.MeshToonMaterial({ color: currentState.bottomColor });
+        if (currentState.bottom === 'pleated_skirt' || currentState.bottom === 'tutu_skirt') {
+          const radius = currentState.bottom === 'tutu_skirt' ? 0.85 : 0.68;
+          const skirt = new THREE.Mesh(new THREE.ConeGeometry(radius, 0.58, 24), bMat);
+          skirt.position.set(0, -0.18, 0);
+          bottomGroup.add(skirt);
+        } else if (currentState.bottom === 'baggy_jeans') {
+          const hip = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.3, 20), bMat);
+          hip.position.set(0, -0.08, 0);
+          const pantGeo = new THREE.CylinderGeometry(0.22, 0.25, 0.85, 20);
+          const p1 = new THREE.Mesh(pantGeo, bMat);
+          p1.position.set(-0.21, -0.58, 0);
+          const p2 = new THREE.Mesh(pantGeo, bMat);
+          p2.position.set(0.21, -0.58, 0);
+          bottomGroup.add(hip, p1, p2);
+        } else if (currentState.bottom === 'shorts_kpop') {
+          const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.46, 0.38, 20), bMat);
+          shorts.position.set(0, -0.12, 0);
+          bottomGroup.add(shorts);
+        }
+      }
+    }
+
+    // SAPATOS / BOTAS
+    if (currentState.shoes !== 'none' && currentState.dress !== 'mermaid_tail') {
+      const sMat = new THREE.MeshToonMaterial({ color: currentState.shoesColor });
+      const height = (currentState.shoes === 'idol_boots' || currentState.shoes === 'laced_boots') ? 0.48 : 0.22;
+      const yPos = (currentState.shoes === 'idol_boots' || currentState.shoes === 'laced_boots') ? -0.92 : -1.04;
+
+      const bootGeo = new THREE.CylinderGeometry(0.17, 0.19, height, 16);
+      const b1 = new THREE.Mesh(bootGeo, sMat);
+      b1.position.set(-0.2, yPos, 0.03);
+      const b2 = new THREE.Mesh(bootGeo, sMat);
+      b2.position.set(0.2, yPos, 0.03);
+      shoesGroup.add(b1, b2);
+
+      if (currentState.shoes === 'sneakers_sock') {
+        const sockGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.38, 16);
+        const sk1 = new THREE.Mesh(sockGeo, whiteMat);
+        sk1.position.set(-0.2, -0.82, 0);
+        const sk2 = new THREE.Mesh(sockGeo, whiteMat);
+        sk2.position.set(0.2, -0.82, 0);
+        shoesGroup.add(sk1, sk2);
+      }
+    }
+
+    // ACESSÓRIOS (Óculos, Laços, Coroa, Bolsa, Asas, Microfone)
+    if (currentState.acc !== 'none') {
+      const aMat = new THREE.MeshToonMaterial({ color: currentState.accColor });
+
+      if (currentState.acc === 'head_glasses' || currentState.acc === 'round_glasses') {
+        const yG = currentState.acc === 'head_glasses' ? 2.15 : 1.56;
+        const zG = currentState.acc === 'head_glasses' ? 0.68 : 0.88;
+        const g1 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 12, 24), aMat);
+        g1.position.set(-0.3, yG, zG);
+        const g2 = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 12, 24), aMat);
+        g2.position.set(0.3, yG, zG);
+        accGroup.add(g1, g2);
+      } else if (currentState.acc === 'ribbon_bow') {
+        const bowCenter = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), aMat);
+        bowCenter.position.set(0, 2.48, 0.35);
+        const loopGeo = new THREE.ConeGeometry(0.28, 0.5, 16);
+        const l1 = new THREE.Mesh(loopGeo, aMat);
+        l1.position.set(-0.28, 2.52, 0.32);
+        l1.rotation.z = Math.PI / 2.3;
+        const l2 = new THREE.Mesh(loopGeo, aMat);
+        l2.position.set(0.28, 2.52, 0.32);
+        l2.rotation.z = -Math.PI / 2.3;
+        accGroup.add(bowCenter, l1, l2);
+      } else if (currentState.acc === 'idol_crown') {
+        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.32, 0.32, 8), goldMat);
+        crown.position.set(0, 2.55, 0);
+        accGroup.add(crown);
+      } else if (currentState.acc === 'cat_bag') {
+        const bag = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), aMat);
+        bag.position.set(-0.36, -0.05, 0.32);
+        const strap = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.025, 8, 32), aMat);
+        strap.position.set(0, 0.22, 0.05);
+        strap.rotation.y = 0.4;
+        strap.rotation.z = 0.65;
+        accGroup.add(bag, strap);
+      } else if (currentState.acc === 'huntrix_wings') {
+        const wingGeo = new THREE.ConeGeometry(0.65, 1.3, 4);
+        const w1 = new THREE.Mesh(wingGeo, aMat);
+        w1.position.set(-0.65, 0.45, -0.35);
+        w1.rotation.z = 0.8;
+        const w2 = new THREE.Mesh(wingGeo, aMat);
+        w2.position.set(0.65, 0.45, -0.35);
+        w2.rotation.z = -0.8;
+        accGroup.add(w1, w2);
+      } else if (currentState.acc === 'kpop_mic') {
+        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 12), whiteMat);
+        stick.position.set(0.62, 0.1, 0.25);
+        const globe = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), aMat);
+        globe.position.set(0.62, 0.35, 0.25);
+        accGroup.add(stick, globe);
+      }
+    }
+  }
+
+  function refreshCharacter3D() {
+    buildBaseBody();
+    updateHair();
+    updateOutfits();
+    const app = document.getElementById('app-container');
+    app.className = `bg-stage-${currentState.bg}`;
+  }
+
+  /**************************************************************
+   * 4. ROTAÇÃO 360° POR TOQUE / MOUSE E LOOP DE ANIMAÇÃO
+   **************************************************************/
+  let isDragging = false;
+  let prevX = 0;
+
+  viewport.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button') || e.target.closest('#color-palette-popup')) return;
+    isDragging = true;
+    prevX = e.clientX;
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - prevX;
+    prevX = e.clientX;
+    characterGroup.rotation.y += deltaX * 0.014;
+  });
+
+  window.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+
+  let clock = new THREE.Clock();
+  function animate() {
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    // Respiração suave e balanço K-Pop
+    characterGroup.position.y = Math.sin(t * 2.5) * 0.04;
+    headGroup.rotation.z = Math.sin(t * 1.8) * 0.035;
+
+    // Aceno sorridente da Rummi na tela inicial
+    if (rightArmPivot) {
+      if (isWaving) {
+        rightArmPivot.rotation.z = 2.2 + Math.sin(t * 8) * 0.28;
+      } else {
+        rightArmPivot.rotation.z = Math.sin(t * 2) * 0.06;
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = viewport.clientWidth / viewport.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+  });
+
+  /**************************************************************
+   * 5. INTERFACE DE USUÁRIO E CONTROLES (PT-BR)
+   **************************************************************/
+  function renderCategories() {
+    const bar = document.getElementById('category-bar');
+    bar.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+      const btn = document.createElement('div');
+      btn.className = `cat-tab ${cat.id === activeCategory ? 'active' : ''}`;
+      btn.innerHTML = cat.icon;
+      btn.title = cat.name;
+      btn.onclick = () => {
+        audio.playPopSound(650);
+        activeCategory = cat.id;
+        renderCategories();
+        renderItemsGrid();
+      };
+      bar.appendChild(btn);
+    });
+  }
+
+  function renderItemsGrid() {
+    const grid = document.getElementById('items-grid');
+    grid.innerHTML = '';
+    const list = ITEMS_DB[activeCategory] || [];
+
+    list.forEach(item => {
+      const card = document.createElement('div');
+      let isSelected = false;
+
+      if (activeCategory === 'face') {
+        isSelected = (currentState.face === item.id);
+      } else {
+        isSelected = (currentState[activeCategory] === item.id);
+      }
+
+      card.className = `item-card ${isSelected ? 'selected' : ''}`;
+      card.innerHTML = `
+        <div class="item-icon">${item.icon}</div>
+        <div class="item-label">${item.label}</div>
+      `;
+
+      card.onclick = () => {
+        audio.playPopSound(780);
+        applyItemSelection(activeCategory, item.id);
+        renderItemsGrid();
+      };
+      grid.appendChild(card);
+    });
+  }
+
+  function applyItemSelection(cat, itemId) {
+    if (cat === 'face') {
+      if (itemId.startsWith('skin_')) {
+        const skinMap = {
+          skin_light: '#ffe0bd',
+          skin_warm: '#f1c27d',
+          skin_tan: '#c68642',
+          skin_dark: '#8d5524'
+        };
+        currentState.skin = skinMap[itemId];
+      } else {
+        currentState.face = itemId;
+      }
+    } else if (cat === 'top' || cat === 'bottom') {
+      currentState[cat] = itemId;
+      if (itemId !== 'none') currentState.dress = 'none';
+    } else if (cat === 'dress') {
+      currentState.dress = itemId;
+    } else {
+      currentState[cat] = itemId;
+    }
+    refreshCharacter3D();
+  }
+
+  // Paleta de 18 Cores Lateral
+  function initColorPalette() {
+    const popup = document.getElementById('color-palette-popup');
+    popup.innerHTML = '';
+    PALETTE_COLORS.forEach(hex => {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch';
+      sw.style.background = hex;
+      sw.onclick = () => {
+        audio.playPopSound(880);
+        if (activeCategory === 'hair') currentState.hairColor = hex;
+        else if (activeCategory === 'top') currentState.topColor = hex;
+        else if (activeCategory === 'dress') currentState.dressColor = hex;
+        else if (activeCategory === 'bottom') currentState.bottomColor = hex;
+        else if (activeCategory === 'shoes') currentState.shoesColor = hex;
+        else if (activeCategory === 'acc') currentState.accColor = hex;
+        else currentState.hairColor = hex;
+        refreshCharacter3D();
+      };
+      popup.appendChild(sw);
+    });
+  }
+
+  // Eventos dos Botões Superiores
+  document.getElementById('start-play-btn').onclick = () => {
+    const nameVal = document.getElementById('player-name-input').value.trim();
+    const playerName = nameVal ? nameVal : 'Estrela';
+    document.getElementById('top-banner').textContent = `✨ Camarim da ${playerName} ✨`;
+    document.getElementById('start-screen').classList.add('hidden');
+    isWaving = false;
+    audio.playSparkle();
+    audio.startMusic();
+  };
+
+  // Botão Retorno Tela Inicial
+  document.getElementById('btn-home').onclick = () => {
+    audio.playPopSound(450);
+    const app = document.getElementById('app-container');
+    if (app.classList.contains('photo-mode')) {
+      app.classList.remove('photo-mode');
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+      return;
+    }
+    isWaving = true;
+    characterGroup.rotation.y = 0;
+    document.getElementById('start-screen').classList.remove('hidden');
+  };
+
+  // Botão Lixeira (Manequim Base igual à imagem 2 e 10)
+  document.getElementById('btn-reset').onclick = () => {
+    audio.playPopSound(380);
+    currentState.hair = 'none';
+    currentState.top = 'none';
+    currentState.dress = 'none';
+    currentState.bottom = 'shorts_kpop';
+    currentState.shoes = 'none';
+    currentState.acc = 'none';
+    refreshCharacter3D();
+    renderItemsGrid();
+  };
+
+  // Botão Dado (Visual Aleatório)
+  document.getElementById('btn-random').onclick = () => {
+    audio.playSparkle();
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    currentState.hair = pick(ITEMS_DB.hair.slice(1)).id;
+    currentState.hairColor = pick(PALETTE_COLORS);
+
+    if (Math.random() > 0.45) {
+      currentState.dress = 'none';
+      currentState.top = pick(ITEMS_DB.top.slice(1)).id;
+      currentState.topColor = pick(PALETTE_COLORS);
+      currentState.bottom = pick(ITEMS_DB.bottom.slice(1)).id;
+      currentState.bottomColor = pick(PALETTE_COLORS);
+    } else {
+      currentState.dress = pick(ITEMS_DB.dress.slice(1)).id;
+      currentState.dressColor = pick(PALETTE_COLORS);
+    }
+
+    currentState.shoes = pick(ITEMS_DB.shoes.slice(1)).id;
+    currentState.shoesColor = pick(PALETTE_COLORS);
+    currentState.acc = pick(ITEMS_DB.acc.slice(1)).id;
+    currentState.accColor = pick(PALETTE_COLORS);
+    currentState.bg = pick(ITEMS_DB.bg).id;
+
+    refreshCharacter3D();
+    renderItemsGrid();
+  };
+
+  // Botão Música
+  document.getElementById('btn-music').onclick = (e) => {
+    const active = audio.toggleMusic();
+    e.currentTarget.textContent = active ? '🎵' : '🔇';
+  };
+
+  // Botão Confirmar / Modo Foto
+  document.getElementById('btn-photo').onclick = () => {
+    audio.playSparkle();
+    const app = document.getElementById('app-container');
+    app.classList.toggle('photo-mode');
+    isWaving = true;
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+      setTimeout(() => { isWaving = false; }, 2200);
+    }, 50);
+  };
+
+  // Botão Personagens Guerreiras Huntrix
+  document.getElementById('btn-preset').onclick = () => {
+    audio.playSparkle();
+    presetIndex = (presetIndex + 1) % HUNTRIX_PRESETS.length;
+    currentState = JSON.parse(JSON.stringify(HUNTRIX_PRESETS[presetIndex]));
+    document.getElementById('top-banner').textContent = `🎤 ${currentState.name}`;
+    refreshCharacter3D();
+    renderItemsGrid();
+  };
+
+  // Botão Paleta de Cores Lateral
+  document.getElementById('btn-color').onclick = () => {
+    audio.playPopSound(720);
+    document.getElementById('color-palette-popup').classList.toggle('hidden');
+  };
+
+  // Inicialização Geral
+  initColorPalette();
+  renderCategories();
+  renderItemsGrid();
+  refreshCharacter3D();
+  animate();
+</script>
+</body>
+</html>
 
